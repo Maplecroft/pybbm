@@ -2,8 +2,10 @@
 
 from __future__ import unicode_literals
 from django.utils import translation
+from django.conf import settings
 from django.db.models import ObjectDoesNotExist
 from pybb import util
+
 
 class PybbMiddleware(object):
     def process_request(self, request):
@@ -32,3 +34,23 @@ class PybbMiddleware(object):
                 request.session['django_language'] = profile.language
                 translation.activate(profile.language)
                 request.LANGUAGE_CODE = translation.get_language()
+
+
+class PybbRouterMiddleware(object):
+    """
+        VERY crude...
+        Not impressed with this, but time limitations and needs must.
+
+        This Middleware is designed to process the client we need to
+        load the forums for based on the url. Ideally I would like to
+        do this with request headers but we just need something running.
+    """
+    def process_request(self, request):
+        request.pybb_client = None
+        request.pybb_templates = None
+        if request.path:
+            for path, config_data in settings.PYBB_ROUTES.items():
+                if request.path.startswith(path):
+                    request.pybb_client = config_data.get('client')
+                    request.pybb_templates = config_data.get('templates')
+                    break

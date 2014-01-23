@@ -82,12 +82,15 @@ class IndexView(generic.ListView):
         ctx = super(IndexView, self).get_context_data(**kwargs)
         categories = ctx['categories']
         for category in categories:
-            category.forums_accessed = perms.filter_forums(self.request.user, category.forums.filter(parent=None))
+            category.forums_accessed = perms.filter_forums(
+                self.request.user, category.forums.filter(parent=None))
         ctx['categories'] = categories
         return ctx
 
     def get_queryset(self):
-        return perms.filter_categories(self.request.user, Category.objects.all())
+        return perms.filter_categories(
+            self.request.user, Category.objects.filter(
+                client__code=self.request.pybb_client))
 
 
 class CategoryView(RedirectToLoginMixin, generic.DetailView):

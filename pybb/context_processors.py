@@ -20,4 +20,5 @@ def processor(request):
     ):
         context[i] = getattr(defaults, i, None)
     context['PYBB_AVATAR_DIMENSIONS'] = '%sx%s' % (defaults.PYBB_AVATAR_WIDTH, defaults.PYBB_AVATAR_WIDTH)
+    context['PYBB_CLIENT'] = request.pybb_client
     return context
