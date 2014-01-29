@@ -17,9 +17,9 @@
       {% if topic|pybb_topic_poll_not_voted:request.user %}
         <tr class="poll-answer-choice">
           <td>
-            <form class="poll-form" action="{% url 'pybb:topic_poll_vote' topic.pk %}" method="post">
-              {% include "pybb/form.html" with form=poll_form %}
-              <p class="submit">{% include "pybb/_button_submit.html" %}</p>
+            <form class="poll-form" action="{% url PYBB_CLIENT|add:'_pybb:topic_poll_vote' topic.pk %}" method="post">
+              {% cinclude "pybb/form.html" with form=poll_form %}
+              <p class="submit">{% cinclude "pybb/_button_submit.html" %}</p>
             </form>
           </td>
         </tr>
@@ -32,9 +32,9 @@
         {% endfor %}
         <tr>
           <td colspan="2">
-            <form action="{% url 'pybb:topic_cancel_poll_vote' pk=topic.pk %}" method="post">{% csrf_token %}
+            <form action="{% url PYBB_CLIENT|add:'_pybb:topic_cancel_poll_vote' pk=topic.pk %}" method="post">{% csrf_token %}
               {% with submit_text=_('Cancel my poll vote') %}
-                {% include "pybb/_button_submit.html" %}
+                {% cinclude "pybb/_button_submit.html" %}
               {% endwith %}
             </form>
           </td>

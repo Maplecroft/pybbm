@@ -2,20 +2,20 @@
 {% load i18n pybb_tags %}
 <form class="post-form" action="
     {% if forum %}
-        {% url 'pybb:add_topic' forum.pk %}
+        {% url PYBB_CLIENT|add:'_pybb:add_topic' forum.pk %}
     {% else %}
         {% if topic %}
-            {% url 'pybb:add_post' topic.pk %}
+            {% url PYBB_CLIENT|add:'_pybb:add_post' topic.pk %}
         {% else %}
-            {% url 'pybb:edit_post' pk=object.pk %}
+            {% url PYBB_CLIENT|add:'_pybb:edit_post' pk=object.pk %}
         {% endif %}
     {% endif %}" method="post" enctype="multipart/form-data">
   {% csrf_token %}
   <fieldset>
-    {% include "pybb/form_errors.html" %}
-    {% if form.name %} {% include "pybb/form_field.html" with field=form.name %} {% endif %}
-    {% if form.login %} {% include "pybb/form_field.html" with field=form.login %}  {% endif %}
-    {% if form.body %} {% include "pybb/form_field.html" with field=form.body %}  {% endif %}
+    {% cinclude "pybb/form_errors.html" %}
+    {% if form.name %} {% cinclude "pybb/form_field.html" with field=form.name %} {% endif %}
+    {% if form.login %} {% cinclude "pybb/form_field.html" with field=form.login %}  {% endif %}
+    {% if form.body %} {% cinclude "pybb/form_field.html" with field=form.body %}  {% endif %}
     <div id='emoticons'>
       {% for smile, url in form.available_smiles.items %}
         <a href='#' title='{{ smile|safe }}'><img src='{{ STATIC_URL }}{{ form.smiles_prefix }}{{ url }}'></a>
@@ -23,9 +23,9 @@
     </div>
 
     {% if request.user|pybb_may_create_poll and form.poll_type %}
-      {% include "pybb/poll_edit_form.html" %}
+      {% cinclude "pybb/poll_edit_form.html" %}
     {% endif %}
-    {% include "pybb/attachments_formset.html" %}
-    <p class="submit">{% include "pybb/_button_submit.html" %}</p>
+    {% cinclude "pybb/attachments_formset.html" %}
+    <p class="submit">{% cinclude "pybb/_button_submit.html" %}</p>
   </fieldset>
 </form>

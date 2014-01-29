@@ -4,7 +4,7 @@ from django.utils.translation import ugettext_lazy as _
 from django.contrib import admin
 from django.core.urlresolvers import reverse
 
-from pybb.models import Category, Forum, Topic, Post, Profile, Attachment, PollAnswer
+from pybb.models import Category, Forum, Topic, Post, Profile, Attachment, PollAnswer, Client
 
 from pybb import util
 username_field = util.get_username_field()
@@ -17,8 +17,9 @@ class ForumInlineAdmin(admin.TabularInline):
 
 
 class CategoryAdmin(admin.ModelAdmin):
-    list_display = ['name', 'position', 'hidden', 'forum_count']
+    list_display = ['name', 'client', 'position', 'hidden', 'forum_count']
     list_per_page = 20
+    list_filter = ['client']
     ordering = ['position']
     search_fields = ['name']
     list_editable = ['position']
@@ -26,11 +27,19 @@ class CategoryAdmin(admin.ModelAdmin):
     inlines = [ForumInlineAdmin]
 
 
+def client_name(obj):
+    return ("%s" % (obj.category.client.name))
+client_name.short_description = 'Client'
+
+
 class ForumAdmin(admin.ModelAdmin):
-    list_display = ['name', 'category', 'hidden', 'position', 'topic_count', ]
+    list_display = [
+        'name', client_name, 'category', 'hidden',
+        'position', 'topic_count']
     list_per_page = 20
     raw_id_fields = ['moderators']
     ordering = ['-category']
+    list_filter = ['category__client']
     search_fields = ['name', 'category__name']
     list_editable = ['position', 'hidden']
     fieldsets = (
@@ -141,6 +150,7 @@ admin.site.register(Forum, ForumAdmin)
 admin.site.register(Topic, TopicAdmin)
 admin.site.register(Post, PostAdmin)
 admin.site.register(Attachment, AttachmentAdmin)
+admin.site.register(Client)
 
 if util.get_pybb_profile_model() == Profile:
     admin.site.register(Profile, ProfileAdmin)

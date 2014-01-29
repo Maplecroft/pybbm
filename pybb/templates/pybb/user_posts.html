@@ -5,21 +5,21 @@
 
 {% block breadcrumb %}
     {% pybb_get_profile target_user as target_profile %}
-    {% include "pybb/breadcrumb.html" with object=target_profile extra_crumb=_('Posts') %}
+    {% cinclude "pybb/breadcrumb.html" with object=target_profile extra_crumb=_('Posts') %}
 {% endblock %}
 
 {% block content %}
     {% pybb_get_profile target_user as target_profile %}
-    <h1>{% trans "All posts created by" %} <a href="{{ target_profile.get_absolute_url }}">{{ target_user.get_username }}</a></h1>
+    <h1>{% trans "All posts created by" %} <a href="{% url PYBB_CLIENT|add:'_pybb:user' target_user.username %}">{{ target_user.get_username }}</a></h1>
     <div class="userinfo">
-        {% include "pybb/pagination.html" %}
+        {% cinclude "pybb/pagination.html" %}
 
         {% for post in object_list %}
             {% cycle 'odd' 'even' as rowcolors silent %}
-            {% include "pybb/post_template.html" with topic=post.topic %}
+            {% cinclude "pybb/post_template.html" with topic=post.topic %}
         {% endfor %}
 
-        {% include "pybb/pagination.html" %}
+        {% cinclude "pybb/pagination.html" %}
 
     </div>
 {% endblock %}

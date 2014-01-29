@@ -38,7 +38,7 @@
             <ul class="nav">
                 {% if request.user.is_authenticated %}
                     <li>
-                        <a href="{% url 'pybb:edit_profile' %}">Profile [logged as {{ request.user.username }}]</a>
+                        <a href="{% url 'pybb_pybb:edit_profile' %}">Profile [logged as {{ request.user.username }}]</a>
                     </li>
                     <li>
                         <a href="{% url 'auth_logout' %}">Logout</a>

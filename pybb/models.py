@@ -43,11 +43,28 @@ except ImportError:
 
 
 @python_2_unicode_compatible
+class Client(models.Model):
+    name = models.CharField(_('Name'), max_length=80)
+    code = models.CharField(_('Code'), max_length=80)
+
+    class Meta(object):
+        ordering = ['name']
+        verbose_name = _('Client')
+        verbose_name_plural = _('Clients')
+
+    def __str__(self):
+        return self.name
+
+
+@python_2_unicode_compatible
 class Category(models.Model):
+    client = models.ForeignKey(
+        Client, related_name='client_forums', verbose_name=_('Client'))
     name = models.CharField(_('Name'), max_length=80)
     position = models.IntegerField(_('Position'), blank=True, default=0)
-    hidden = models.BooleanField(_('Hidden'), blank=False, null=False, default=False,
-        help_text = _('If checked, this category will be visible only for staff')
+    hidden = models.BooleanField(
+        _('Hidden'), blank=False, null=False, default=False,
+        help_text=_('If checked, this category will be visible only for staff')
     )
 
     class Meta(object):
@@ -61,8 +78,18 @@ class Category(models.Model):
     def forum_count(self):
         return self.forums.all().count()
 
+    @property
+    def client_code(self):
+        """
+            Get client code and cache on the instance as a property
+        """
+        if not hasattr(self, '_client_code'):
+            self._client_code = self.client.code
+        return self._client_code
+
     def get_absolute_url(self):
-        return reverse('pybb:category', kwargs={'pk': self.id})
+        return reverse('%s_pybb:category' % self.client_code, kwargs={
+            'pk': self.id})
 
     @property
     def topics(self):
@@ -70,23 +97,29 @@ class Category(models.Model):
 
     @property
     def posts(self):
-        return Post.objects.filter(topic__forum__category=self).select_related()
+        return Post.objects.filter(
+            topic__forum__category=self).select_related()
 
 
 @python_2_unicode_compatible
 class Forum(models.Model):
-    category = models.ForeignKey(Category, related_name='forums', verbose_name=_('Category'))
-    parent = models.ForeignKey('self', related_name='child_forums', verbose_name=_('Parent forum'),
-                               blank=True, null=True)
+    category = models.ForeignKey(
+        Category, related_name='forums', verbose_name=_('Category'))
+    parent = models.ForeignKey(
+        'self', related_name='child_forums', verbose_name=_('Parent forum'),
+        blank=True, null=True)
     name = models.CharField(_('Name'), max_length=80)
     position = models.IntegerField(_('Position'), blank=True, default=0)
     description = models.TextField(_('Description'), blank=True)
-    moderators = models.ManyToManyField(User, blank=True, null=True, verbose_name=_('Moderators'))
+    moderators = models.ManyToManyField(
+        User, blank=True, null=True, verbose_name=_('Moderators'))
     updated = models.DateTimeField(_('Updated'), blank=True, null=True)
     post_count = models.IntegerField(_('Post count'), blank=True, default=0)
     topic_count = models.IntegerField(_('Topic count'), blank=True, default=0)
-    hidden = models.BooleanField(_('Hidden'), blank=False, null=False, default=False)
-    readed_by = models.ManyToManyField(User, through='ForumReadTracker', related_name='readed_forums')
+    hidden = models.BooleanField(
+        _('Hidden'), blank=False, null=False, default=False)
+    readed_by = models.ManyToManyField(
+        User, through='ForumReadTracker', related_name='readed_forums')
     headline = models.TextField(_('Headline'), blank=True, null=True)
 
     class Meta(object):
@@ -110,7 +143,8 @@ class Forum(models.Model):
         self.save()
 
     def get_absolute_url(self):
-        return reverse('pybb:forum', kwargs={'pk': self.id})
+        return reverse('%s_pybb:forum' % self.category.client_code, kwargs={
+            'pk': self.id})
 
     @property
     def posts(self):
@@ -147,7 +181,8 @@ class Topic(models.Model):
         (POLL_TYPE_MULTIPLE, _('Multiple answers')),
     )
 
-    forum = models.ForeignKey(Forum, related_name='topics', verbose_name=_('Forum'))
+    forum = models.ForeignKey(
+        Forum, related_name='topics', verbose_name=_('Forum'))
     name = models.CharField(_('Subject'), max_length=255)
     created = models.DateTimeField(_('Created'), null=True)
     updated = models.DateTimeField(_('Updated'), null=True)
@@ -155,12 +190,15 @@ class Topic(models.Model):
     views = models.IntegerField(_('Views count'), blank=True, default=0)
     sticky = models.BooleanField(_('Sticky'), blank=True, default=False)
     closed = models.BooleanField(_('Closed'), blank=True, default=False)
-    subscribers = models.ManyToManyField(User, related_name='subscriptions', verbose_name=_('Subscribers'),
+    subscribers = models.ManyToManyField(
+        User, related_name='subscriptions', verbose_name=_('Subscribers'),
         blank=True)
     post_count = models.IntegerField(_('Post count'), blank=True, default=0)
-    readed_by = models.ManyToManyField(User, through='TopicReadTracker', related_name='readed_topics')
+    readed_by = models.ManyToManyField(
+        User, through='TopicReadTracker', related_name='readed_topics')
     on_moderation = models.BooleanField(_('On moderation'), default=False)
-    poll_type = models.IntegerField(_('Poll type'), choices=POLL_TYPE_CHOICES, default=POLL_TYPE_NONE)
+    poll_type = models.IntegerField(
+        _('Poll type'), choices=POLL_TYPE_CHOICES, default=POLL_TYPE_NONE)
     poll_question = models.TextField(_('Poll question'), blank=True, null=True)
 
     class Meta(object):
@@ -185,11 +223,14 @@ class Topic(models.Model):
     @property
     def last_post(self):
         if not getattr(self, '_last_post', None):
-            self._last_post = self.posts.order_by('-created').select_related('user')[0]
+            self._last_post = self.posts.order_by(
+                '-created').select_related('user')[0]
         return self._last_post
 
     def get_absolute_url(self):
-        return reverse('pybb:topic', kwargs={'pk': self.id})
+        return reverse(
+            '%s_pybb:topic' % self.forum.category.client_code,
+            kwargs={'pk': self.id})
 
     def save(self, *args, **kwargs):
         if self.id is None:
@@ -214,7 +255,8 @@ class Topic(models.Model):
 
     def update_counters(self):
         self.post_count = self.posts.count()
-        last_post = Post.objects.filter(topic_id=self.id).order_by('-created')[0]
+        last_post = Post.objects.filter(topic_id=self.id).order_by(
+            '-created')[0]
         self.updated = last_post.updated or last_post.created
         self.save()
 
@@ -228,14 +270,16 @@ class Topic(models.Model):
 
     def poll_votes(self):
         if self.poll_type != self.POLL_TYPE_NONE:
-            return PollAnswerUser.objects.filter(poll_answer__topic=self).count()
+            return PollAnswerUser.objects.filter(
+                poll_answer__topic=self).count()
         else:
             return None
 
 
 class RenderableItem(models.Model):
     """
-    Base class for models that has markup, body, body_text and body_html fields.
+    Base class for models that has markup, body, body_text and
+    body_html fields.
     """
 
     class Meta(object):
@@ -246,7 +290,8 @@ class RenderableItem(models.Model):
     body_text = models.TextField(_('Text version'))
 
     def render(self):
-        self.body_html = defaults.PYBB_MARKUP_ENGINES[defaults.PYBB_MARKUP](self.body)
+        self.body_html = defaults.PYBB_MARKUP_ENGINES[
+            defaults.PYBB_MARKUP](self.body)
         # Remove tags which was generated with the markup processor
         text = strip_tags(self.body_html)
         # Unescape entities which was generated with the markup processor
@@ -255,11 +300,14 @@ class RenderableItem(models.Model):
 
 @python_2_unicode_compatible
 class Post(RenderableItem):
-    topic = models.ForeignKey(Topic, related_name='posts', verbose_name=_('Topic'))
-    user = models.ForeignKey(User, related_name='posts', verbose_name=_('User'))
+    topic = models.ForeignKey(
+        Topic, related_name='posts', verbose_name=_('Topic'))
+    user = models.ForeignKey(
+        User, related_name='posts', verbose_name=_('User'))
     created = models.DateTimeField(_('Created'), blank=True, db_index=True)
     updated = models.DateTimeField(_('Updated'), blank=True, null=True)
-    user_ip = models.IPAddressField(_('User IP'), blank=True, default='0.0.0.0')
+    user_ip = models.IPAddressField(
+        _('User IP'), blank=True, default='0.0.0.0')
     on_moderation = models.BooleanField(_('On moderation'), default=False)
 
     class Meta(object):
@@ -293,7 +341,8 @@ class Post(RenderableItem):
         super(Post, self).save(*args, **kwargs)
 
         # If post is topic head and moderated, moderate topic too
-        if self.topic.head == self and not self.on_moderation and self.topic.on_moderation:
+        if self.topic.head == self and not self.on_moderation and \
+                self.topic.on_moderation:
             self.topic.on_moderation = False
 
         self.topic.update_counters()
@@ -304,7 +353,9 @@ class Post(RenderableItem):
             old_post.topic.forum.update_counters()
 
     def get_absolute_url(self):
-        return reverse('pybb:post', kwargs={'pk': self.id})
+        return reverse(
+            '%s_pybb:post' % self.topic.forum.category.client_code,
+            kwargs={'pk': self.id})
 
     def delete(self, *args, **kwargs):
         self_id = self.id
@@ -329,14 +380,19 @@ class Profile(PybbProfile):
     Profile class that can be used if you doesn't have
     your site profile.
     """
-    user = AutoOneToOneField(User, related_name='pybb_profile', verbose_name=_('User'))
+    user = AutoOneToOneField(
+        User, related_name='pybb_profile', verbose_name=_('User'))
+
+    def __str__(self):
+        return self.user.username
 
     class Meta(object):
         verbose_name = _('Profile')
         verbose_name_plural = _('Profiles')
 
-    def get_absolute_url(self):
-        return reverse('pybb:user', kwargs={'username': getattr(self.user, username_field)})
+    def get_absolute_client_url(self, client):
+        return reverse('%s_pybb:user' % client, kwargs={
+            'username': getattr(self.user, username_field)})
 
 
 class Attachment(models.Model):
@@ -345,10 +401,12 @@ class Attachment(models.Model):
         verbose_name = _('Attachment')
         verbose_name_plural = _('Attachments')
 
-    post = models.ForeignKey(Post, verbose_name=_('Post'), related_name='attachments')
+    post = models.ForeignKey(
+        Post, verbose_name=_('Post'), related_name='attachments')
     size = models.IntegerField(_('Size'))
-    file = models.FileField(_('File'),
-                            upload_to=functools.partial(get_file_path, to=defaults.PYBB_ATTACHMENT_UPLOAD_TO))
+    file = models.FileField(
+        _('File'), upload_to=functools.partial(
+            get_file_path, to=defaults.PYBB_ATTACHMENT_UPLOAD_TO))
 
     def save(self, *args, **kwargs):
         self.size = self.file.size
@@ -367,9 +425,11 @@ class Attachment(models.Model):
 class TopicReadTrackerManager(models.Manager):
     def get_or_create_tracker(self, user, topic):
         """
-        Correctly create tracker in mysql db on default REPEATABLE READ transaction mode
+        Correctly create tracker in mysql db on default REPEATABLE READ
+        transaction mode
 
-        It's known problem when standrard get_or_create method return can raise exception
+        It's known problem when standrard get_or_create method return can
+        raise exception
         with correct data in mysql database.
         See http://stackoverflow.com/questions/2235318/how-do-i-deal-with-this-race-condition-in-django/2235624
         """
@@ -403,9 +463,11 @@ class TopicReadTracker(models.Model):
 class ForumReadTrackerManager(models.Manager):
     def get_or_create_tracker(self, user, forum):
         """
-        Correctly create tracker in mysql db on default REPEATABLE READ transaction mode
+        Correctly create tracker in mysql db on default REPEATABLE READ
+        transaction mode
 
-        It's known problem when standrard get_or_create method return can raise exception
+        It's known problem when standrard get_or_create method return can
+        raise exception
         with correct data in mysql database.
         See http://stackoverflow.com/questions/2235318/how-do-i-deal-with-this-race-condition-in-django/2235624
         """
@@ -438,7 +500,8 @@ class ForumReadTracker(models.Model):
 
 @python_2_unicode_compatible
 class PollAnswer(models.Model):
-    topic = models.ForeignKey(Topic, related_name='poll_answers', verbose_name=_('Topic'))
+    topic = models.ForeignKey(
+        Topic, related_name='poll_answers', verbose_name=_('Topic'))
     text = models.CharField(max_length=255, verbose_name=_('Text'))
 
     class Meta:
@@ -461,8 +524,10 @@ class PollAnswer(models.Model):
 
 @python_2_unicode_compatible
 class PollAnswerUser(models.Model):
-    poll_answer = models.ForeignKey(PollAnswer, related_name='users', verbose_name=_('Poll answer'))
-    user = models.ForeignKey(User, related_name='poll_answers', verbose_name=_('User'))
+    poll_answer = models.ForeignKey(
+        PollAnswer, related_name='users', verbose_name=_('Poll answer'))
+    user = models.ForeignKey(
+        User, related_name='poll_answers', verbose_name=_('User'))
     timestamp = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -496,8 +561,10 @@ def user_saved(instance, created, **kwargs):
     if not created:
         return
     try:
-        add_post_permission = Permission.objects.get_by_natural_key('add_post', 'pybb', 'post')
-        add_topic_permission = Permission.objects.get_by_natural_key('add_topic', 'pybb', 'topic')
+        add_post_permission = Permission.objects.get_by_natural_key(
+            'add_post', 'pybb', 'post')
+        add_topic_permission = Permission.objects.get_by_natural_key(
+            'add_topic', 'pybb', 'topic')
     except (Permission.DoesNotExist, ContentType.DoesNotExist):
         return
     instance.user_permissions.add(add_post_permission, add_topic_permission)

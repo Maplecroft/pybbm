@@ -9,15 +9,23 @@ __author__ = 'zeus'
 def processor(request):
     context = {}
     for i in (
-        'PYBB_TEMPLATE',
         'PYBB_DEFAULT_AVATAR_URL',
         'PYBB_MARKUP',
         'PYBB_DEFAULT_TITLE',
         'PYBB_ENABLE_ANONYMOUS_POST',
-        'PYBB_ATTACHMENT_ENABLE', # deprecated, should be used pybb_may_attach_files filter, will be removed
+        # deprecated, should be used pybb_may_attach_files filter,
+        # will be removed
+        'PYBB_ATTACHMENT_ENABLE',
         'PYBB_AVATAR_WIDTH',
-        'PYBB_AVATAR_HEIGHT'
+        'PYBB_AVATAR_HEIGHT',
     ):
         context[i] = getattr(defaults, i, None)
-    context['PYBB_AVATAR_DIMENSIONS'] = '%sx%s' % (defaults.PYBB_AVATAR_WIDTH, defaults.PYBB_AVATAR_WIDTH)
+    context['PYBB_AVATAR_DIMENSIONS'] = '%sx%s' % (
+        defaults.PYBB_AVATAR_WIDTH, defaults.PYBB_AVATAR_WIDTH)
+
+    # custom  maplecroft code to handle multi client forums
+    context['PYBB_CLIENT'] = getattr(request, 'pybb_client', getattr(
+        defaults, 'PYBB_CLIENT', 'pybb'))
+    context['PYBB_TEMPLATE'] = getattr(request, 'pybb_template', getattr(
+        defaults, 'PYBB_TEMPLATE', None))
     return context

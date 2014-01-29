@@ -9,7 +9,7 @@ admin.autodiscover()
 
 urlpatterns = patterns('',
     url(r'^admin/', include(admin.site.urls)),
-    (r'^', include('pybb.urls', namespace='pybb')),
+    (r'^', include('pybb.urls', namespace='pybb_pybb')),
     (r'^accounts/', include('registration.urls')),
 
 )
