@@ -12,7 +12,6 @@
 {% endblock %}
 
 {% block content %}
-    <h1>Base Index template!</h1>
     {% if categories %}
         {% for category in categories %}
             {% cinclude 'pybb/category.html' %}
