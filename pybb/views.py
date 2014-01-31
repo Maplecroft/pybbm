@@ -123,6 +123,10 @@ class IndexView(ClientTemplateViewMixin, generic.ListView):
     template_name = 'pybb/index.html'
     context_object_name = 'categories'
 
+    @method_decorator(login_required)
+    def dispatch(self, *args, **kwargs):
+        return super(IndexView, self).dispatch(*args, **kwargs)
+
     def get_context_data(self, **kwargs):
         ctx = super(IndexView, self).get_context_data(**kwargs)
         categories = ctx['categories']
@@ -201,6 +205,10 @@ class LatestTopicsView(
     paginate_by = defaults.PYBB_FORUM_PAGE_SIZE
     context_object_name = 'topic_list'
     template_name = 'pybb/latest_topics.html'
+
+    @method_decorator(login_required)
+    def dispatch(self, *args, **kwargs):
+        return super(LatestTopicsView, self).dispatch(*args, **kwargs)
 
     def get_queryset(self):
         qs = Topic.objects.all().select_related()
@@ -518,6 +526,10 @@ class UserView(ClientTemplateViewMixin, generic.DetailView):
     template_name = 'pybb/user.html'
     context_object_name = 'target_user'
 
+    @method_decorator(login_required)
+    def dispatch(self, *args, **kwargs):
+        return super(UserView, self).dispatch(*args, **kwargs)
+
     def get_object(self, queryset=None):
         if queryset is None:
             queryset = self.get_queryset()
@@ -536,6 +548,7 @@ class UserPosts(ClientTemplateViewMixin, PaginatorMixin, generic.ListView):
     paginate_by = defaults.PYBB_TOPIC_PAGE_SIZE
     template_name = 'pybb/user_posts.html'
 
+    @method_decorator(login_required)
     def dispatch(self, request, *args, **kwargs):
         username = kwargs.pop('username')
         self.user = get_object_or_404(
@@ -560,6 +573,7 @@ class UserTopics(ClientTemplateViewMixin, PaginatorMixin, generic.ListView):
     paginate_by = defaults.PYBB_FORUM_PAGE_SIZE
     template_name = 'pybb/user_topics.html'
 
+    @method_decorator(login_required)
     def dispatch(self, request, *args, **kwargs):
         username = kwargs.pop('username')
         self.user = get_object_or_404(User, username=username)
