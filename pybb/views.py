@@ -19,7 +19,7 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.http import require_POST
 from django.core.exceptions import ImproperlyConfigured
 from django.views.generic.edit import ModelFormMixin
-from django.views.decorators.csrf import csrf_protect
+from django.views.decorators.csrf import csrf_protect, requires_csrf_token
 from django.views import generic
 from pybb.util import build_cache_key
 
@@ -219,6 +219,7 @@ class TopicView(
         return reverse('%s_pybb:topic' % self.request.pybb_client, args=(
             self.kwargs['pk'],))
 
+    @method_decorator(requires_csrf_token)
     def dispatch(self, request, *args, **kwargs):
         self.topic = get_object_or_404(
             Topic.objects.select_related('forum'), pk=kwargs['pk'])
