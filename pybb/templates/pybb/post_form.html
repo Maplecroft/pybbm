@@ -1,6 +1,6 @@
 {% load url from future %}
 {% load i18n pybb_tags %}
-<form class="post-form" action="
+<form class="post-form" action="{% spaceless %}
     {% if forum %}
         {% url PYBB_CLIENT|add:'_pybb:add_topic' forum.pk %}
     {% else %}
@@ -9,7 +9,7 @@
         {% else %}
             {% url PYBB_CLIENT|add:'_pybb:edit_post' pk=object.pk %}
         {% endif %}
-    {% endif %}" method="post" enctype="multipart/form-data">
+    {% endif %}{% endspaceless %}" method="post" enctype="multipart/form-data">
   {% csrf_token %}
   <fieldset>
     {% cinclude "pybb/form_errors.html" %}
