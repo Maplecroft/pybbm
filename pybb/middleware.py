@@ -5,7 +5,7 @@ from django.utils import translation
 from django.conf import settings
 from django.db.models import ObjectDoesNotExist
 from pybb import util
-from pybb.loaders import ClientTemplateLoader
+from pybb.loaders import ClientTemplateLoader, PermissionDecoratorLoader
 
 
 class PybbMiddleware(object):
@@ -56,4 +56,8 @@ class PybbRouterMiddleware(object):
                     request.pybb_template = config_data.get('base_template')
                     request.pybb_client_templates = ClientTemplateLoader(
                         config_data.get('client_templates'))
+                    if config_data.get('permission_decorators', None):
+                        request.pybb_permission_decorators = \
+                            PermissionDecoratorLoader(config_data.get(
+                                'permission_decorators'))
                     break

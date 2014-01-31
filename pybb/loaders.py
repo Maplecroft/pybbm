@@ -1,5 +1,6 @@
 # import django deps
 from django import template
+from django.utils.importlib import import_module
 
 
 # client template loader
@@ -42,3 +43,32 @@ class ClientTemplateLoader(object):
         """
         paths = [self.client_templates]
         return paths
+
+
+# permission decorator loader
+class PermissionDecoratorLoader(object):
+    """
+        Loads and resolves permissions decorators
+        that need to be applied to pybb views
+    """
+    def __init__(self, to_load=None):
+        self.decorators = []
+        self.to_load = to_load
+        self.resolve_decorators()
+
+    def resolve_decorators(self):
+        """
+            Resolves the decorators and appends them
+            to the decorators property
+        """
+        for dec in self.to_load:
+            self.decorators.append(
+                self.import_dec(dec))
+
+    def import_dec(self, dotted_path):
+        """
+            Imports decorator function from dotted path
+        """
+        dot = dotted_path.rfind('.')
+        module, func = dotted_path[:dot], dotted_path[dot + 1:]
+        return getattr(import_module(module), func)
