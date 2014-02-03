@@ -21,8 +21,10 @@ def permissions_decorator():
                 view
             """
             new_dispatch = orig_dispatch
-            for dec in reversed(request.pybb_permission_decorators.decorators):
-                new_dispatch = method_decorator(dec())(new_dispatch)
+            if request.pybb_permission_decorators is not None:
+                for dec in reversed(
+                        request.pybb_permission_decorators.decorators):
+                    new_dispatch = method_decorator(dec())(new_dispatch)
             return new_dispatch(self, request, *args, **kwargs)
         cls.dispatch = _dispatch
         return cls

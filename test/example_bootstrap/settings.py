@@ -114,5 +114,6 @@ PYBB_CLIENT_FORUMS = {
         'client_templates': os.path.join(PROJECT_ROOT, 'templates'),
         'base_template': '%s/base.html' % os.path.join(
             PROJECT_ROOT, 'templates'),
+        'permission_decorators': [],
     },
 }

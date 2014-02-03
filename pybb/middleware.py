@@ -49,6 +49,7 @@ class PybbRouterMiddleware(object):
     def process_request(self, request):
         request.pybb_client = None
         request.pybb_templates = None
+        request.pybb_permission_decorators = None
         if request.path:
             for path, config_data in settings.PYBB_CLIENT_FORUMS.items():
                 if request.path.startswith(path):

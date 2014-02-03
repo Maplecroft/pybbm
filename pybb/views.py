@@ -48,6 +48,7 @@ from pybb import defaults
 from pybb.permissions import perms
 
 from pybb import util
+from pybb.decorators import permissions_decorator
 User = util.get_user_model()
 username_field = util.get_username_field()
 
@@ -118,6 +119,7 @@ class RedirectToLoginMixin(object):
         return '/'
 
 
+@permissions_decorator()
 class IndexView(ClientTemplateViewMixin, generic.ListView):
 
     template_name = 'pybb/index.html'
@@ -138,6 +140,7 @@ class IndexView(ClientTemplateViewMixin, generic.ListView):
                 client__code=self.request.pybb_client))
 
 
+@permissions_decorator()
 class CategoryView(
         ClientTemplateViewMixin, RedirectToLoginMixin, generic.DetailView):
 
@@ -165,6 +168,7 @@ class CategoryView(
         return ctx
 
 
+@permissions_decorator()
 class ForumView(
         ClientTemplateViewMixin, RedirectToLoginMixin,
         PaginatorMixin, generic.ListView):
@@ -195,6 +199,7 @@ class ForumView(
         return qs
 
 
+@permissions_decorator()
 class LatestTopicsView(
         ClientTemplateViewMixin, PaginatorMixin, generic.ListView):
 
@@ -208,6 +213,7 @@ class LatestTopicsView(
         return qs.order_by('-updated')
 
 
+@permissions_decorator()
 class TopicView(
         ClientTemplateViewMixin, RedirectToLoginMixin,
         PaginatorMixin, generic.ListView):
@@ -415,6 +421,7 @@ class PostEditMixin(object):
                 form=form, aformset=aformset, pollformset=pollformset))
 
 
+@permissions_decorator()
 class AddPostView(ClientTemplateViewMixin, PostEditMixin, generic.CreateView):
 
     template_name = 'pybb/add_post.html'
@@ -488,6 +495,7 @@ class AddPostView(ClientTemplateViewMixin, PostEditMixin, generic.CreateView):
         return super(AddPostView, self).get_success_url()
 
 
+@permissions_decorator()
 class EditPostView(ClientTemplateViewMixin, PostEditMixin, generic.UpdateView):
 
     model = Post
@@ -513,6 +521,7 @@ class EditPostView(ClientTemplateViewMixin, PostEditMixin, generic.UpdateView):
         return post
 
 
+@permissions_decorator()
 class UserView(ClientTemplateViewMixin, generic.DetailView):
     model = User
     template_name = 'pybb/user.html'
@@ -531,6 +540,7 @@ class UserView(ClientTemplateViewMixin, generic.DetailView):
         return ctx
 
 
+@permissions_decorator()
 class UserPosts(ClientTemplateViewMixin, PaginatorMixin, generic.ListView):
     model = Post
     paginate_by = defaults.PYBB_TOPIC_PAGE_SIZE
@@ -555,6 +565,7 @@ class UserPosts(ClientTemplateViewMixin, PaginatorMixin, generic.ListView):
         return context
 
 
+@permissions_decorator()
 class UserTopics(ClientTemplateViewMixin, PaginatorMixin, generic.ListView):
     model = Topic
     paginate_by = defaults.PYBB_FORUM_PAGE_SIZE
@@ -578,6 +589,7 @@ class UserTopics(ClientTemplateViewMixin, PaginatorMixin, generic.ListView):
         return context
 
 
+@permissions_decorator()
 class PostView(RedirectToLoginMixin, generic.RedirectView):
 
     def get_login_redirect_url(self):
@@ -595,6 +607,7 @@ class PostView(RedirectToLoginMixin, generic.RedirectView):
                 post.topic.id]), page, post.id)
 
 
+@permissions_decorator()
 class ModeratePost(generic.RedirectView):
     def get_redirect_url(self, **kwargs):
         post = get_object_or_404(Post, pk=self.kwargs['pk'])
@@ -605,6 +618,7 @@ class ModeratePost(generic.RedirectView):
         return post.get_absolute_url()
 
 
+@permissions_decorator()
 class ProfileEditView(ClientTemplateViewMixin, generic.UpdateView):
 
     template_name = 'pybb/edit_profile.html'
@@ -619,7 +633,6 @@ class ProfileEditView(ClientTemplateViewMixin, generic.UpdateView):
         else:
             return super(ProfileEditView, self).get_form_class()
 
-    @method_decorator(login_required)
     @method_decorator(csrf_protect)
     def dispatch(self, request, *args, **kwargs):
         return super(ProfileEditView, self).dispatch(request, *args, **kwargs)
@@ -628,6 +641,7 @@ class ProfileEditView(ClientTemplateViewMixin, generic.UpdateView):
         return reverse('%s_pybb:edit_profile' % self.request.pybb_client)
 
 
+@permissions_decorator()
 class DeletePostView(ClientTemplateViewMixin, generic.DeleteView):
 
     template_name = 'pybb/delete_post.html'
@@ -665,6 +679,7 @@ class DeletePostView(ClientTemplateViewMixin, generic.DeleteView):
                 return ""
 
 
+@permissions_decorator()
 class TopicActionBaseView(generic.View):
 
     def get_topic(self):
@@ -712,15 +727,11 @@ class OpenTopicView(TopicActionBaseView):
         topic.save()
 
 
+@permissions_decorator()
 class TopicPollVoteView(generic.UpdateView):
     model = Topic
     http_method_names = ['post', ]
     form_class = PollForm
-
-    @method_decorator(login_required)
-    def dispatch(self, request, *args, **kwargs):
-        return super(TopicPollVoteView, self).dispatch(
-            request, *args, **kwargs)
 
     def get_form_kwargs(self):
         kwargs = super(ModelFormMixin, self).get_form_kwargs()
