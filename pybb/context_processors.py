@@ -29,5 +29,8 @@ def processor(request):
         defaults, 'PYBB_CLIENT', 'pybb'))
     context['PYBB_TEMPLATE'] = getattr(request, 'pybb_template', getattr(
         defaults, 'PYBB_TEMPLATE', None))
+    client_title = getattr(request, 'pybb_default_title', None)
+    if client_title:
+        context['PYBB_DEFAULT_TITLE'] = client_title
 
     return context

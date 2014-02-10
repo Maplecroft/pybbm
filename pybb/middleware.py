@@ -50,10 +50,13 @@ class PybbRouterMiddleware(object):
         request.pybb_client = None
         request.pybb_templates = None
         request.pybb_permission_decorators = None
+        request.pybb_default_title = None
         if request.path:
             for path, config_data in settings.PYBB_CLIENT_FORUMS.items():
                 if request.path.startswith(path):
                     request.pybb_client = config_data.get('client')
+                    request.pybb_default_title = config_data.get(
+                        'forum_title', None)
                     request.pybb_template = config_data.get('base_template')
                     request.pybb_client_templates = ClientTemplateLoader(
                         config_data.get('client_templates'))
