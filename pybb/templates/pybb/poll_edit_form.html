@@ -1,14 +1,14 @@
-{% load i18n %}
-{% include "pybb/form_field.html" with field=form.poll_type %}
+{% load i18n pybb_tags %}
+{% cinclude "pybb/form_field.html" with field=form.poll_type %}
 <div id="poll-question">
-  {% include "pybb/form_field.html" with field=form.poll_question %}
+  {% cinclude "pybb/form_field.html" with field=form.poll_question %}
 </div>
 <div id="poll-answers-formset" style="display: none;">
   <br>{% trans 'Poll answers' %}
-    {% include "pybb/form_errors.html" with form=pollformset %}
+    {% cinclude "pybb/form_errors.html" with form=pollformset %}
     {% for form_answer in pollformset %}
         <div class="poll-answer-form">
-            {% include "pybb/form.html" with form=form_answer hide_labels=1 %}
+            {% cinclude "pybb/form.html" with form=form_answer hide_labels=1 %}
         </div>
     {% endfor %}
   {{ pollformset.management_form }}

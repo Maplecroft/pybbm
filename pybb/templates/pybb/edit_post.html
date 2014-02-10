@@ -5,18 +5,18 @@
 
 {% block extra_script %}
     {{ block.super }}
-    {% include "pybb/_markitup.html" %}
+    {% cinclude "pybb/_markitup.html" %}
     <script type="text/javascript" src="{{ STATIC_URL }}pybb/js/jquery.formset.min.js"></script>
 {% endblock %}
 
 {% block content %}
     <h1>{% trans "Editing the post" %}</h1>
-    {% include "pybb/post_form.html" %}
+    {% cinclude "pybb/post_form.html" %}
 {% endblock content %}
 
 {% block breadcrumb %}
     {% with extra_crumb="Edit post" %}
-        {% include "pybb/breadcrumb.html" %}
+        {% cinclude "pybb/breadcrumb.html" %}
     {% endwith %}
-    
+
 {% endblock %}

@@ -31,7 +31,7 @@ except ImportError:
     raise Exception('PyBB requires lxml for self testing')
 
 from pybb import defaults
-from pybb.models import Topic, TopicReadTracker, Forum, ForumReadTracker, Post, Category, PollAnswer, Profile
+from pybb.models import Topic, TopicReadTracker, Forum, ForumReadTracker, Post, Category, PollAnswer, Profile, Client as ClientModel
 
 __author__ = 'zeus'
 
@@ -44,7 +44,8 @@ class SharedTestModule(object):
         self.client.login(username=username, password=password)
 
     def create_initial(self, post=True):
-        self.category = Category.objects.create(name='foo')
+        self.client_for = ClientModel.objects.create(name='Pybb', code='pybb')
+        self.category = Category.objects.create(name='foo', client=self.client_for)
         self.forum = Forum.objects.create(name='xfoo', description='bar', category=self.category)
         self.topic = Topic.objects.create(name='etopic', forum=self.forum, user=self.user)
         if post:
@@ -74,7 +75,7 @@ class FeaturesTest(TestCase, SharedTestModule):
     def test_base(self):
         # Check index page
         Forum.objects.create(name='xfoo1', description='bar1', category=self.category, parent=self.forum)
-        url = reverse('pybb:index')
+        url = reverse('pybb_pybb:index')
         response = self.client.get(url)
         parser = html.HTMLParser(encoding='utf8')
         tree = html.fromstring(response.content, parser=parser)
@@ -108,24 +109,24 @@ class FeaturesTest(TestCase, SharedTestModule):
     def test_profile_edit(self):
         # Self profile edit
         self.login_client()
-        response = self.client.get(reverse('pybb:edit_profile'))
+        response = self.client.get(reverse('pybb_pybb:edit_profile'))
         self.assertEqual(response.status_code, 200)
         values = self.get_form_values(response, 'profile-edit')
         values['signature'] = 'test signature'
-        response = self.client.post(reverse('pybb:edit_profile'), data=values, follow=True)
+        response = self.client.post(reverse('pybb_pybb:edit_profile'), data=values, follow=True)
         self.assertEqual(response.status_code, 200)
         self.client.get(self.post.get_absolute_url(), follow=True)
         self.assertContains(response, 'test signature')
         # Test empty signature
         values['signature'] = ''
-        response = self.client.post(reverse('pybb:edit_profile'), data=values, follow=True)
+        response = self.client.post(reverse('pybb_pybb:edit_profile'), data=values, follow=True)
         self.assertEqual(len(response.context['form'].errors), 0)
 
     def test_pagination_and_topic_addition(self):
         for i in range(0, defaults.PYBB_FORUM_PAGE_SIZE + 3):
             topic = Topic(name='topic_%s_' % i, forum=self.forum, user=self.user)
             topic.save()
-        url = reverse('pybb:forum', args=[self.forum.id])
+        url = reverse('pybb_pybb:forum', args=[self.forum.id])
         response = self.client.get(url)
         self.assertEqual(len(response.context['topic_list']), defaults.PYBB_FORUM_PAGE_SIZE)
         self.assertTrue(response.context['is_paginated'])
@@ -141,7 +142,7 @@ class FeaturesTest(TestCase, SharedTestModule):
 
     def test_topic_addition(self):
         self.login_client()
-        add_topic_url = reverse('pybb:add_topic', kwargs={'forum_id': self.forum.id})
+        add_topic_url = reverse('pybb_pybb:add_topic', kwargs={'forum_id': self.forum.id})
         response = self.client.get(add_topic_url)
         values = self.get_form_values(response)
         values['body'] = 'new topic test'
@@ -191,7 +192,7 @@ class FeaturesTest(TestCase, SharedTestModule):
         tree = html.fromstring(client.get(topic.forum.get_absolute_url()).content)
         self.assertTrue(tree.xpath('//a[@href="%s"]/parent::td[contains(@class,"unread")]' % topic.get_absolute_url()))
         # Forum status
-        tree = html.fromstring(client.get(reverse('pybb:index')).content)
+        tree = html.fromstring(client.get(reverse('pybb_pybb:index')).content)
         self.assertTrue(
             tree.xpath('//a[@href="%s"]/parent::td[contains(@class,"unread")]' % topic.forum.get_absolute_url()))
         # Visit it
@@ -203,11 +204,11 @@ class FeaturesTest(TestCase, SharedTestModule):
             client.get(t.get_absolute_url())
         self.assertFalse(tree.xpath('//a[@href="%s"]/parent::td[contains(@class,"unread")]' % topic.get_absolute_url()))
         # Forum status - readed
-        tree = html.fromstring(client.get(reverse('pybb:index')).content)
+        tree = html.fromstring(client.get(reverse('pybb_pybb:index')).content)
         self.assertFalse(
             tree.xpath('//a[@href="%s"]/parent::td[contains(@class,"unread")]' % topic.forum.get_absolute_url()))
         # Post message
-        add_post_url = reverse('pybb:add_post', kwargs={'topic_id': topic.id})
+        add_post_url = reverse('pybb_pybb:add_post', kwargs={'topic_id': topic.id})
         response = client.get(add_post_url)
         values = self.get_form_values(response)
         values['body'] = 'test tracking'
@@ -217,19 +218,19 @@ class FeaturesTest(TestCase, SharedTestModule):
         tree = html.fromstring(client.get(topic.forum.get_absolute_url()).content)
         self.assertFalse(tree.xpath('//a[@href="%s"]/parent::td[contains(@class,"unread")]' % topic.get_absolute_url()))
         # Forum status - readed
-        tree = html.fromstring(client.get(reverse('pybb:index')).content)
+        tree = html.fromstring(client.get(reverse('pybb_pybb:index')).content)
         self.assertFalse(
             tree.xpath('//a[@href="%s"]/parent::td[contains(@class,"unread")]' % topic.forum.get_absolute_url()))
         post = Post(topic=topic, user=self.user, body='one')
         post.save()
-        client.get(reverse('pybb:mark_all_as_read'))
-        tree = html.fromstring(client.get(reverse('pybb:index')).content)
+        client.get(reverse('pybb_pybb:mark_all_as_read'))
+        tree = html.fromstring(client.get(reverse('pybb_pybb:index')).content)
         self.assertFalse(
             tree.xpath('//a[@href="%s"]/parent::td[contains(@class,"unread")]' % topic.forum.get_absolute_url()))
         # Empty forum - readed
         f = Forum(name='empty', category=self.category)
         f.save()
-        tree = html.fromstring(client.get(reverse('pybb:index')).content)
+        tree = html.fromstring(client.get(reverse('pybb_pybb:index')).content)
         self.assertFalse(tree.xpath('//a[@href="%s"]/parent::td[contains(@class,"unread")]' % f.get_absolute_url()))
 
     def test_read_tracking_multi_user(self):
@@ -264,7 +265,7 @@ class FeaturesTest(TestCase, SharedTestModule):
         self.assertEqual(TopicReadTracker.objects.filter(user=user_bob).count(), 1)
         self.assertEqual(TopicReadTracker.objects.filter(user=user_bob, topic=topic_1).count(), 1)
 
-        # user_bob reads topic_2, he should get a forum read tracker, 
+        # user_bob reads topic_2, he should get a forum read tracker,
         #  there should be no topic read trackers for user_bob
         client_bob.get(topic_2.get_absolute_url())
         self.assertEqual(TopicReadTracker.objects.all().count(), 1)
@@ -276,8 +277,8 @@ class FeaturesTest(TestCase, SharedTestModule):
             [t.unread for t in pybb_topic_unread([topic_1, topic_2], user_bob)],
             [False, False])
 
-        # user_ann creates topic_3, they should get a new topic read tracker in the db 
-        add_topic_url = reverse('pybb:add_topic', kwargs={'forum_id': self.forum.id})
+        # user_ann creates topic_3, they should get a new topic read tracker in the db
+        add_topic_url = reverse('pybb_pybb:add_topic', kwargs={'forum_id': self.forum.id})
         response = client_ann.get(add_topic_url)
         values = self.get_form_values(response)
         values['body'] = 'topic_3'
@@ -292,7 +293,7 @@ class FeaturesTest(TestCase, SharedTestModule):
         self.assertEqual(topic_3.name, 'topic_3')
 
         # user_ann posts to topic_1, a topic they've already read, no new trackers should be created
-        add_post_url = reverse('pybb:add_post', kwargs={'topic_id': topic_1.id})
+        add_post_url = reverse('pybb_pybb:add_post', kwargs={'topic_id': topic_1.id})
         response = client_ann.get(add_post_url)
         values = self.get_form_values(response)
         values['body'] = 'test tracking'
@@ -355,7 +356,7 @@ class FeaturesTest(TestCase, SharedTestModule):
         self.assertEqual(TopicReadTracker.objects.filter(user=self.user).count(), 1)
         self.assertEqual(TopicReadTracker.objects.filter(user=self.user, topic=topic_1).count(), 1)
 
-        # user reads topic_2, they should get a forum read tracker, 
+        # user reads topic_2, they should get a forum read tracker,
         #  there should be no topic read trackers for the user
         client.get(topic_2.get_absolute_url())
         self.assertEqual(TopicReadTracker.objects.all().count(), 0)
@@ -366,7 +367,7 @@ class FeaturesTest(TestCase, SharedTestModule):
     def test_read_tracker_after_posting(self):
         client = Client()
         client.login(username='zeus', password='zeus')
-        add_post_url = reverse('pybb:add_post', kwargs={'topic_id': self.topic.id})
+        add_post_url = reverse('pybb_pybb:add_post', kwargs={'topic_id': self.topic.id})
         response = client.get(add_post_url)
         values = self.get_form_values(response)
         values['body'] = 'test tracking'
@@ -504,7 +505,7 @@ class FeaturesTest(TestCase, SharedTestModule):
             [True, True])
 
         # read all
-        client_ann.get(reverse('pybb:mark_all_as_read'))
+        client_ann.get(reverse('pybb_pybb:mark_all_as_read'))
         self.assertListEqual(
             [t.unread for t in pybb_topic_unread([topic_1, topic_2], user_ann)],
             [False, False])
@@ -567,27 +568,27 @@ class FeaturesTest(TestCase, SharedTestModule):
         client_ann = Client()
         client_ann.login(username='ann', password='ann')
 
-        response = client_ann.get(reverse('pybb:topic', kwargs={'pk': topic_1.id}), data={'first-unread': 1},
+        response = client_ann.get(reverse('pybb_pybb:topic', kwargs={'pk': topic_1.id}), data={'first-unread': 1},
                                   follow=True)
         self.assertRedirects(response,
-                             '%s?page=%d#post-%d' % (reverse('pybb:topic', kwargs={'pk': topic_1.id}), 1, post_1_1.id))
-        response = client_ann.get(reverse('pybb:topic', kwargs={'pk': topic_1.id}), data={'first-unread': 1},
+                             '%s?page=%d#post-%d' % (reverse('pybb_pybb:topic', kwargs={'pk': topic_1.id}), 1, post_1_1.id))
+        response = client_ann.get(reverse('pybb_pybb:topic', kwargs={'pk': topic_1.id}), data={'first-unread': 1},
                                   follow=True)
         self.assertRedirects(response,
-                             '%s?page=%d#post-%d' % (reverse('pybb:topic', kwargs={'pk': topic_1.id}), 1, post_1_2.id))
+                             '%s?page=%d#post-%d' % (reverse('pybb_pybb:topic', kwargs={'pk': topic_1.id}), 1, post_1_2.id))
 
-        response = client_ann.get(reverse('pybb:topic', kwargs={'pk': topic_2.id}), data={'first-unread': 1},
+        response = client_ann.get(reverse('pybb_pybb:topic', kwargs={'pk': topic_2.id}), data={'first-unread': 1},
                                   follow=True)
         self.assertRedirects(response,
-                             '%s?page=%d#post-%d' % (reverse('pybb:topic', kwargs={'pk': topic_2.id}), 1, post_2_1.id))
+                             '%s?page=%d#post-%d' % (reverse('pybb_pybb:topic', kwargs={'pk': topic_2.id}), 1, post_2_1.id))
 
         post_1_3 = Post.objects.create(topic=topic_1, user=self.user, body='1_3')
         post_1_4 = Post.objects.create(topic=topic_1, user=self.user, body='1_4')
 
-        response = client_ann.get(reverse('pybb:topic', kwargs={'pk': topic_1.id}), data={'first-unread': 1},
+        response = client_ann.get(reverse('pybb_pybb:topic', kwargs={'pk': topic_1.id}), data={'first-unread': 1},
                                   follow=True)
         self.assertRedirects(response,
-                             '%s?page=%d#post-%d' % (reverse('pybb:topic', kwargs={'pk': topic_1.id}), 1, post_1_3.id))
+                             '%s?page=%d#post-%d' % (reverse('pybb_pybb:topic', kwargs={'pk': topic_1.id}), 1, post_1_3.id))
 
     def test_latest_topics(self):
         topic_1 = self.topic
@@ -595,26 +596,27 @@ class FeaturesTest(TestCase, SharedTestModule):
         topic_2 = Topic.objects.create(name='topic_2', forum=self.forum, user=self.user)
         topic_2.updated = datetime.datetime.utcnow() + datetime.timedelta(days=-1)
 
-        category_2 = Category.objects.create(name='cat2')
+        client_for = ClientModel.objects.create(name='Pybb', code='pybb')
+        category_2 = Category.objects.create(name='cat2', client=client_for)
         forum_2 = Forum.objects.create(name='forum_2', category=category_2)
         topic_3 = Topic.objects.create(name='topic_3', forum=forum_2, user=self.user)
         topic_3.updated = datetime.datetime.utcnow() + datetime.timedelta(days=-2)
 
         self.login_client()
-        response = self.client.get(reverse('pybb:topic_latest'))
+        response = self.client.get(reverse('pybb_pybb:topic_latest'))
         self.assertEqual(response.status_code, 200)
         self.assertListEqual(list(response.context['topic_list']), [topic_1, topic_2, topic_3])
 
         topic_2.forum.hidden = True
         topic_2.forum.save()
-        response = self.client.get(reverse('pybb:topic_latest'))
+        response = self.client.get(reverse('pybb_pybb:topic_latest'))
         self.assertListEqual(list(response.context['topic_list']), [topic_3])
 
         topic_2.forum.hidden = False
         topic_2.forum.save()
         category_2.hidden = True
         category_2.save()
-        response = self.client.get(reverse('pybb:topic_latest'))
+        response = self.client.get(reverse('pybb_pybb:topic_latest'))
         self.assertListEqual(list(response.context['topic_list']), [topic_1, topic_2])
 
         topic_2.forum.hidden = False
@@ -623,31 +625,32 @@ class FeaturesTest(TestCase, SharedTestModule):
         category_2.save()
         topic_1.on_moderation = True
         topic_1.save()
-        response = self.client.get(reverse('pybb:topic_latest'))
+        response = self.client.get(reverse('pybb_pybb:topic_latest'))
         self.assertListEqual(list(response.context['topic_list']), [topic_1, topic_2, topic_3])
 
         topic_1.user = User.objects.create_user('another', 'another@localhost', 'another')
         topic_1.save()
-        response = self.client.get(reverse('pybb:topic_latest'))
+        response = self.client.get(reverse('pybb_pybb:topic_latest'))
         self.assertListEqual(list(response.context['topic_list']), [topic_2, topic_3])
 
         topic_1.forum.moderators.add(self.user)
-        response = self.client.get(reverse('pybb:topic_latest'))
+        response = self.client.get(reverse('pybb_pybb:topic_latest'))
         self.assertListEqual(list(response.context['topic_list']), [topic_1, topic_2, topic_3])
 
         topic_1.forum.moderators.remove(self.user)
         self.user.is_superuser = True
         self.user.save()
-        response = self.client.get(reverse('pybb:topic_latest'))
+        response = self.client.get(reverse('pybb_pybb:topic_latest'))
         self.assertListEqual(list(response.context['topic_list']), [topic_1, topic_2, topic_3])
 
         self.client.logout()
-        response = self.client.get(reverse('pybb:topic_latest'))
+        response = self.client.get(reverse('pybb_pybb:topic_latest'))
         self.assertListEqual(list(response.context['topic_list']), [topic_2, topic_3])
 
     def test_hidden(self):
         client = Client()
-        category = Category(name='hcat', hidden=True)
+        client_for = ClientModel.objects.create(name='Pybb', code='pybb')
+        category = Category(name='hcat', hidden=True, client=client_for)
         category.save()
         forum_in_hidden = Forum(name='in_hidden', category=category)
         forum_in_hidden.save()
@@ -665,23 +668,23 @@ class FeaturesTest(TestCase, SharedTestModule):
         post_in_hidden = Post(topic=topic_in_hidden, user=self.user, body='hidden')
         post_in_hidden.save()
 
-        self.assertFalse(category.id in [c.id for c in client.get(reverse('pybb:index')).context['categories']])
+        self.assertFalse(category.id in [c.id for c in client.get(reverse('pybb_pybb:index')).context['categories']])
         self.assertEqual(client.get(category.get_absolute_url()).status_code, 302)
         self.assertEqual(client.get(forum_in_hidden.get_absolute_url()).status_code, 302)
         self.assertEqual(client.get(topic_in_hidden.get_absolute_url()).status_code, 302)
 
-        self.assertNotContains(client.get(reverse('pybb:index')), forum_hidden.get_absolute_url())
-        self.assertNotContains(client.get(reverse('pybb:feed_topics')), topic_hidden.get_absolute_url())
-        self.assertNotContains(client.get(reverse('pybb:feed_topics')), topic_in_hidden.get_absolute_url())
+        self.assertNotContains(client.get(reverse('pybb_pybb:index')), forum_hidden.get_absolute_url())
+        self.assertNotContains(client.get(reverse('pybb_pybb:feed_topics')), topic_hidden.get_absolute_url())
+        self.assertNotContains(client.get(reverse('pybb_pybb:feed_topics')), topic_in_hidden.get_absolute_url())
 
-        self.assertNotContains(client.get(reverse('pybb:feed_posts')), post_hidden.get_absolute_url())
-        self.assertNotContains(client.get(reverse('pybb:feed_posts')), post_in_hidden.get_absolute_url())
+        self.assertNotContains(client.get(reverse('pybb_pybb:feed_posts')), post_hidden.get_absolute_url())
+        self.assertNotContains(client.get(reverse('pybb_pybb:feed_posts')), post_in_hidden.get_absolute_url())
         self.assertEqual(client.get(forum_hidden.get_absolute_url()).status_code, 302)
         self.assertEqual(client.get(topic_hidden.get_absolute_url()).status_code, 302)
 
         client.login(username='zeus', password='zeus')
-        self.assertFalse(category.id in [c.id for c in client.get(reverse('pybb:index')).context['categories']])
-        self.assertNotContains(client.get(reverse('pybb:index')), forum_hidden.get_absolute_url())
+        self.assertFalse(category.id in [c.id for c in client.get(reverse('pybb_pybb:index')).context['categories']])
+        self.assertNotContains(client.get(reverse('pybb_pybb:index')), forum_hidden.get_absolute_url())
         self.assertEqual(client.get(category.get_absolute_url()).status_code, 403)
         self.assertEqual(client.get(forum_in_hidden.get_absolute_url()).status_code, 403)
         self.assertEqual(client.get(topic_in_hidden.get_absolute_url()).status_code, 403)
@@ -689,8 +692,8 @@ class FeaturesTest(TestCase, SharedTestModule):
         self.assertEqual(client.get(topic_hidden.get_absolute_url()).status_code, 403)
         self.user.is_staff = True
         self.user.save()
-        self.assertTrue(category.id in [c.id for c in client.get(reverse('pybb:index')).context['categories']])
-        self.assertContains(client.get(reverse('pybb:index')), forum_hidden.get_absolute_url())
+        self.assertTrue(category.id in [c.id for c in client.get(reverse('pybb_pybb:index')).context['categories']])
+        self.assertContains(client.get(reverse('pybb_pybb:index')), forum_hidden.get_absolute_url())
         self.assertEqual(client.get(category.get_absolute_url()).status_code, 200)
         self.assertEqual(client.get(forum_in_hidden.get_absolute_url()).status_code, 200)
         self.assertEqual(client.get(topic_in_hidden.get_absolute_url()).status_code, 200)
@@ -699,7 +702,7 @@ class FeaturesTest(TestCase, SharedTestModule):
 
     def test_inactive(self):
         self.login_client()
-        url = reverse('pybb:add_post', kwargs={'topic_id': self.topic.id})
+        url = reverse('pybb_pybb:add_post', kwargs={'topic_id': self.topic.id})
         response = self.client.get(url)
         values = self.get_form_values(response)
         values['body'] = 'test ban'
@@ -717,7 +720,7 @@ class FeaturesTest(TestCase, SharedTestModule):
     def test_csrf(self):
         client = Client(enforce_csrf_checks=True)
         client.login(username='zeus', password='zeus')
-        post_url = reverse('pybb:add_post', kwargs={'topic_id': self.topic.id})
+        post_url = reverse('pybb_pybb:add_post', kwargs={'topic_id': self.topic.id})
         response = client.get(post_url)
         values = self.get_form_values(response)
         del values['csrfmiddlewaretoken']
@@ -725,7 +728,7 @@ class FeaturesTest(TestCase, SharedTestModule):
         self.assertNotEqual(response.status_code, 200)
         response = client.get(self.topic.get_absolute_url())
         values = self.get_form_values(response)
-        response = client.post(reverse('pybb:add_post', kwargs={'topic_id': self.topic.id}), values, follow=True)
+        response = client.post(reverse('pybb_pybb:add_post', kwargs={'topic_id': self.topic.id}), values, follow=True)
         self.assertEqual(response.status_code, 200)
 
     def test_user_blocking(self):
@@ -735,9 +738,9 @@ class FeaturesTest(TestCase, SharedTestModule):
         self.user.is_superuser = True
         self.user.save()
         self.login_client()
-        response = self.client.get(reverse('pybb:block_user', args=[user.username]), follow=True)
+        response = self.client.get(reverse('pybb_pybb:block_user', args=[user.username]), follow=True)
         self.assertEqual(response.status_code, 405)
-        response = self.client.post(reverse('pybb:block_user', args=[user.username]), follow=True)
+        response = self.client.post(reverse('pybb_pybb:block_user', args=[user.username]), follow=True)
         self.assertEqual(response.status_code, 200)
         user = User.objects.get(username=user.username)
         self.assertFalse(user.is_active)
@@ -746,7 +749,7 @@ class FeaturesTest(TestCase, SharedTestModule):
 
         user.is_active = True
         user.save()
-        response = self.client.post(reverse('pybb:block_user', args=[user.username]),
+        response = self.client.post(reverse('pybb_pybb:block_user', args=[user.username]),
                                     data={'block_and_delete_messages': 'block_and_delete_messages'}, follow=True)
         self.assertEqual(response.status_code, 200)
         user = User.objects.get(username=user.username)
@@ -761,16 +764,16 @@ class FeaturesTest(TestCase, SharedTestModule):
         self.user.is_superuser = True
         self.user.save()
         self.login_client()
-        response = self.client.get(reverse('pybb:unblock_user', args=[user.username]), follow=True)
+        response = self.client.get(reverse('pybb_pybb:unblock_user', args=[user.username]), follow=True)
         self.assertEqual(response.status_code, 405)
-        response = self.client.post(reverse('pybb:unblock_user', args=[user.username]), follow=True)
+        response = self.client.post(reverse('pybb_pybb:unblock_user', args=[user.username]), follow=True)
         self.assertEqual(response.status_code, 200)
         user = User.objects.get(username=user.username)
         self.assertTrue(user.is_active)
 
     def test_ajax_preview(self):
         self.login_client()
-        response = self.client.post(reverse('pybb:post_ajax_preview'), data={'data': '[b]test bbcode ajax preview[b]'})
+        response = self.client.post(reverse('pybb_pybb:post_ajax_preview'), data={'data': '[b]test bbcode ajax preview[b]'})
         self.assertContains(response, '<strong>test bbcode ajax preview</strong>')
 
     def test_headline(self):
@@ -781,14 +784,14 @@ class FeaturesTest(TestCase, SharedTestModule):
 
     def test_quote(self):
         self.login_client()
-        response = self.client.get(reverse('pybb:add_post', kwargs={'topic_id': self.topic.id}),
+        response = self.client.get(reverse('pybb_pybb:add_post', kwargs={'topic_id': self.topic.id}),
                                    data={'quote_id': self.post.id, 'body': 'test tracking'}, follow=True)
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, self.post.body)
 
     def test_edit_post(self):
         self.login_client()
-        edit_post_url = reverse('pybb:edit_post', kwargs={'pk': self.post.id})
+        edit_post_url = reverse('pybb_pybb:edit_post', kwargs={'pk': self.post.id})
         response = self.client.get(edit_post_url)
         self.assertEqual(response.status_code, 200)
         tree = html.fromstring(response.content)
@@ -817,7 +820,7 @@ class FeaturesTest(TestCase, SharedTestModule):
         self.user.is_staff = True
         self.user.save()
         self.login_client()
-        response = self.client.post(reverse('pybb:add_post', kwargs={'topic_id': self.topic.id}),
+        response = self.client.post(reverse('pybb_pybb:add_post', kwargs={'topic_id': self.topic.id}),
                                     data={'quote_id': self.post.id, 'body': 'test admin post', 'user': 'zeus'},
                                     follow=True)
         self.assertEqual(response.status_code, 200)
@@ -828,9 +831,9 @@ class FeaturesTest(TestCase, SharedTestModule):
         self.user.save()
         self.login_client()
         self.assertEqual(
-            self.client.get(reverse('pybb:stick_topic', kwargs={'pk': self.topic.id}), follow=True).status_code, 200)
+            self.client.get(reverse('pybb_pybb:stick_topic', kwargs={'pk': self.topic.id}), follow=True).status_code, 200)
         self.assertEqual(
-            self.client.get(reverse('pybb:unstick_topic', kwargs={'pk': self.topic.id}), follow=True).status_code, 200)
+            self.client.get(reverse('pybb_pybb:unstick_topic', kwargs={'pk': self.topic.id}), follow=True).status_code, 200)
 
     def test_delete_view(self):
         post = Post(topic=self.topic, user=self.user, body='test to delete')
@@ -838,14 +841,14 @@ class FeaturesTest(TestCase, SharedTestModule):
         self.user.is_superuser = True
         self.user.save()
         self.login_client()
-        response = self.client.post(reverse('pybb:delete_post', args=[post.id]), follow=True)
+        response = self.client.post(reverse('pybb_pybb:delete_post', args=[post.id]), follow=True)
         self.assertEqual(response.status_code, 200)
         # Check that topic and forum exists ;)
         self.assertEqual(Topic.objects.filter(id=self.topic.id).count(), 1)
         self.assertEqual(Forum.objects.filter(id=self.forum.id).count(), 1)
 
         # Delete topic
-        response = self.client.post(reverse('pybb:delete_post', args=[self.post.id]), follow=True)
+        response = self.client.post(reverse('pybb_pybb:delete_post', args=[self.post.id]), follow=True)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(Post.objects.filter(id=self.post.id).count(), 0)
         self.assertEqual(Topic.objects.filter(id=self.topic.id).count(), 0)
@@ -855,15 +858,15 @@ class FeaturesTest(TestCase, SharedTestModule):
         self.user.is_superuser = True
         self.user.save()
         self.login_client()
-        add_post_url = reverse('pybb:add_post', args=[self.topic.id])
+        add_post_url = reverse('pybb_pybb:add_post', args=[self.topic.id])
         response = self.client.get(add_post_url)
         values = self.get_form_values(response)
         values['body'] = 'test closed'
-        response = self.client.get(reverse('pybb:close_topic', args=[self.topic.id]), follow=True)
+        response = self.client.get(reverse('pybb_pybb:close_topic', args=[self.topic.id]), follow=True)
         self.assertEqual(response.status_code, 200)
         response = self.client.post(add_post_url, values, follow=True)
         self.assertEqual(response.status_code, 403)
-        response = self.client.get(reverse('pybb:open_topic', args=[self.topic.id]), follow=True)
+        response = self.client.get(reverse('pybb_pybb:open_topic', args=[self.topic.id]), follow=True)
         self.assertEqual(response.status_code, 200)
         response = self.client.post(add_post_url, values, follow=True)
         self.assertEqual(response.status_code, 200)
@@ -872,13 +875,13 @@ class FeaturesTest(TestCase, SharedTestModule):
         user = User.objects.create_user(username='user2', password='user2', email='user2@example.com')
         client = Client()
         client.login(username='user2', password='user2')
-        response = client.get(reverse('pybb:add_subscription', args=[self.topic.id]), follow=True)
+        response = client.get(reverse('pybb_pybb:add_subscription', args=[self.topic.id]), follow=True)
         self.assertEqual(response.status_code, 200)
         self.assertTrue(user in list(self.topic.subscribers.all()))
 
         # create a new reply (with another user)
         self.client.login(username='zeus', password='zeus')
-        add_post_url = reverse('pybb:add_post', args=[self.topic.id])
+        add_post_url = reverse('pybb_pybb:add_post', args=[self.topic.id])
         response = self.client.get(add_post_url)
         values = self.get_form_values(response)
         values['body'] = 'test subscribtion юникод'
@@ -893,7 +896,7 @@ class FeaturesTest(TestCase, SharedTestModule):
         # unsubscribe
         client.login(username='user2', password='user2')
         self.assertTrue([msg for msg in mail.outbox if new_post.get_absolute_url() in msg.body])
-        response = client.get(reverse('pybb:delete_subscription', args=[self.topic.id]), follow=True)
+        response = client.get(reverse('pybb_pybb:delete_subscription', args=[self.topic.id]), follow=True)
         self.assertEqual(response.status_code, 200)
         self.assertTrue(user not in list(self.topic.subscribers.all()))
 
@@ -937,14 +940,14 @@ class FeaturesTest(TestCase, SharedTestModule):
         self.assertEqual(forum_1.post_count, 0)
 
     def test_user_views(self):
-        response = self.client.get(reverse('pybb:user', kwargs={'username': self.user.username}))
+        response = self.client.get(reverse('pybb_pybb:user', kwargs={'username': self.user.username}))
         self.assertEqual(response.status_code, 200)
 
-        response = self.client.get(reverse('pybb:user_posts', kwargs={'username': self.user.username}))
+        response = self.client.get(reverse('pybb_pybb:user_posts', kwargs={'username': self.user.username}))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context['object_list'].count(), 1)
 
-        response = self.client.get(reverse('pybb:user_topics', kwargs={'username': self.user.username}))
+        response = self.client.get(reverse('pybb_pybb:user_topics', kwargs={'username': self.user.username}))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context['object_list'].count(), 1)
 
@@ -953,10 +956,10 @@ class FeaturesTest(TestCase, SharedTestModule):
 
         self.client.logout()
 
-        response = self.client.get(reverse('pybb:user_posts', kwargs={'username': self.user.username}))
+        response = self.client.get(reverse('pybb_pybb:user_posts', kwargs={'username': self.user.username}))
         self.assertEqual(response.context['object_list'].count(), 0)
 
-        response = self.client.get(reverse('pybb:user_topics', kwargs={'username': self.user.username}))
+        response = self.client.get(reverse('pybb_pybb:user_topics', kwargs={'username': self.user.username}))
         self.assertEqual(response.context['object_list'].count(), 0)
 
     def test_post_count(self):
@@ -1002,7 +1005,7 @@ class FeaturesTest(TestCase, SharedTestModule):
         self.topic.forum.moderators.add(user1)
 
         self.login_client()
-        response = self.client.get(reverse('pybb:add_post', kwargs={'topic_id': self.topic.id}))
+        response = self.client.get(reverse('pybb_pybb:add_post', kwargs={'topic_id': self.topic.id}))
         self.assertEqual(response.status_code, 200)
 
     def tearDown(self):
@@ -1019,7 +1022,8 @@ class AnonymousTest(TestCase, SharedTestModule):
         defaults.PYBB_ENABLE_ANONYMOUS_POST = True
         defaults.PYBB_ANONYMOUS_USERNAME = 'Anonymous'
         self.user = User.objects.create_user('Anonymous', 'Anonymous@localhost', 'Anonymous')
-        self.category = Category.objects.create(name='foo')
+        self.client_for = ClientModel.objects.create(name='Pybb', code='pybb')
+        self.category = Category.objects.create(name='foo', client=self.client_for)
         self.forum = Forum.objects.create(name='xfoo', description='bar', category=self.category)
         self.topic = Topic.objects.create(name='etopic', forum=self.forum, user=self.user)
         add_post_permission = Permission.objects.get_by_natural_key('add_post', 'pybb', 'post')
@@ -1031,7 +1035,7 @@ class AnonymousTest(TestCase, SharedTestModule):
         defaults.PYBB_ANONYMOUS_VIEWS_CACHE_BUFFER = self.PYBB_ANONYMOUS_VIEWS_CACHE_BUFFER
 
     def test_anonymous_posting(self):
-        post_url = reverse('pybb:add_post', kwargs={'topic_id': self.topic.id})
+        post_url = reverse('pybb_pybb:add_post', kwargs={'topic_id': self.topic.id})
         response = self.client.get(post_url)
         values = self.get_form_values(response)
         values['body'] = 'test anonymous'
@@ -1082,7 +1086,7 @@ class PreModerationTest(TestCase, SharedTestModule):
 
     def test_premoderation(self):
         self.client.login(username='zeus', password='zeus')
-        add_post_url = reverse('pybb:add_post', kwargs={'topic_id': self.topic.id})
+        add_post_url = reverse('pybb_pybb:add_post', kwargs={'topic_id': self.topic.id})
         response = self.client.get(add_post_url)
         values = self.get_form_values(response)
         values['body'] = 'test premoderation'
@@ -1131,7 +1135,7 @@ class PreModerationTest(TestCase, SharedTestModule):
         admin_client = Client()
         admin_client.login(username='admin', password='admin')
         post = Post.objects.get(body='test premoderation')
-        response = admin_client.get(reverse('pybb:moderate_post', kwargs={'pk': post.id}), follow=True)
+        response = admin_client.get(reverse('pybb_pybb:moderate_post', kwargs={'pk': post.id}), follow=True)
         self.assertEqual(response.status_code, 200)
 
         # Now all can see this post:
@@ -1144,13 +1148,13 @@ class PreModerationTest(TestCase, SharedTestModule):
         post.on_moderation = True
         post.save()
         client.login(username='zeus', password='zeus')
-        response = client.get(reverse('pybb:moderate_post', kwargs={'pk': post.id}), follow=True)
+        response = client.get(reverse('pybb_pybb:moderate_post', kwargs={'pk': post.id}), follow=True)
         self.assertEqual(response.status_code, 403)
 
         # If user create new topic it goes to moderation if MODERATION_ENABLE
         # When first post is moderated, topic becomes moderated too
         self.client.login(username='zeus', password='zeus')
-        add_topic_url = reverse('pybb:add_topic', kwargs={'forum_id': self.forum.id})
+        add_topic_url = reverse('pybb_pybb:add_topic', kwargs={'forum_id': self.forum.id})
         response = self.client.get(add_topic_url)
         values = self.get_form_values(response)
         values['body'] = 'new topic test'
@@ -1166,7 +1170,7 @@ class PreModerationTest(TestCase, SharedTestModule):
         self.assertNotContains(response, 'new topic name')
         response = client.get(Topic.objects.get(name='new topic name').get_absolute_url())
         self.assertEqual(response.status_code, 302)
-        response = admin_client.get(reverse('pybb:moderate_post',
+        response = admin_client.get(reverse('pybb_pybb:moderate_post',
                                             kwargs={'pk': Post.objects.get(body='new topic test').id}),
                                     follow=True)
         self.assertEqual(response.status_code, 200)
@@ -1192,7 +1196,7 @@ class AttachmentTest(TestCase, SharedTestModule):
         self.create_initial()
 
     def test_attachment_one(self):
-        add_post_url = reverse('pybb:add_post', kwargs={'topic_id': self.topic.id})
+        add_post_url = reverse('pybb_pybb:add_post', kwargs={'topic_id': self.topic.id})
         self.login_client()
         response = self.client.get(add_post_url)
         with open(self.file_name, 'rb') as fp:
@@ -1204,7 +1208,7 @@ class AttachmentTest(TestCase, SharedTestModule):
         self.assertTrue(Post.objects.filter(body='test attachment').exists())
 
     def test_attachment_two(self):
-        add_post_url = reverse('pybb:add_post', kwargs={'topic_id': self.topic.id})
+        add_post_url = reverse('pybb_pybb:add_post', kwargs={'topic_id': self.topic.id})
         self.login_client()
         response = self.client.get(add_post_url)
         with open(self.file_name, 'rb') as fp:
@@ -1229,7 +1233,7 @@ class PollTest(TestCase, SharedTestModule):
         defaults.PYBB_POLL_MAX_ANSWERS = 2
 
     def test_poll_add(self):
-        add_topic_url = reverse('pybb:add_topic', kwargs={'forum_id': self.forum.id})
+        add_topic_url = reverse('pybb_pybb:add_topic', kwargs={'forum_id': self.forum.id})
         self.login_client()
         response = self.client.get(add_topic_url)
         values = self.get_form_values(response)
@@ -1275,7 +1279,7 @@ class PollTest(TestCase, SharedTestModule):
         self.assertEqual(PollAnswer.objects.filter(topic=new_topic).count(), 2)
 
     def test_regression_adding_poll_with_removed_answers(self):
-        add_topic_url = reverse('pybb:add_topic', kwargs={'forum_id': self.forum.id})
+        add_topic_url = reverse('pybb_pybb:add_topic', kwargs={'forum_id': self.forum.id})
         self.login_client()
         response = self.client.get(add_topic_url)
         values = self.get_form_values(response)
@@ -1295,7 +1299,7 @@ class PollTest(TestCase, SharedTestModule):
     def test_regression_poll_deletion_after_second_post(self):
         self.login_client()
 
-        add_topic_url = reverse('pybb:add_topic', kwargs={'forum_id': self.forum.id})
+        add_topic_url = reverse('pybb_pybb:add_topic', kwargs={'forum_id': self.forum.id})
         response = self.client.get(add_topic_url)
         values = self.get_form_values(response)
         values['body'] = 'test poll body'
@@ -1311,7 +1315,7 @@ class PollTest(TestCase, SharedTestModule):
         self.assertEqual(new_topic.poll_question, 'q1')
         self.assertEqual(PollAnswer.objects.filter(topic=new_topic).count(), 2)
 
-        add_post_url = reverse('pybb:add_post', kwargs={'topic_id': new_topic.id})
+        add_post_url = reverse('pybb_pybb:add_post', kwargs={'topic_id': new_topic.id})
         response = self.client.get(add_post_url)
         values = self.get_form_values(response)
         values['body'] = 'test answer body'
@@ -1319,7 +1323,7 @@ class PollTest(TestCase, SharedTestModule):
         self.assertEqual(PollAnswer.objects.filter(topic=new_topic).count(), 2)
 
     def test_poll_edit(self):
-        edit_topic_url = reverse('pybb:edit_post', kwargs={'pk': self.post.id})
+        edit_topic_url = reverse('pybb_pybb:edit_post', kwargs={'pk': self.post.id})
         self.login_client()
         response = self.client.get(edit_topic_url)
         values = self.get_form_values(response)
@@ -1369,7 +1373,7 @@ class PollTest(TestCase, SharedTestModule):
 
         self.login_client()
         recreate_poll(poll_type=Topic.POLL_TYPE_SINGLE)
-        vote_url = reverse('pybb:topic_poll_vote', kwargs={'pk': self.topic.id})
+        vote_url = reverse('pybb_pybb:topic_poll_vote', kwargs={'pk': self.topic.id})
         my_answer = PollAnswer.objects.all()[0]
         values = {'answers': my_answer.id}
         response = self.client.post(vote_url, data=values, follow=True)
@@ -1392,7 +1396,7 @@ class PollTest(TestCase, SharedTestModule):
         response = self.client.post(vote_url, data=values, follow=True)
         self.assertEqual(response.status_code, 403)  # already voted
 
-        cancel_vote_url = reverse('pybb:topic_cancel_poll_vote', kwargs={'pk': self.topic.id})
+        cancel_vote_url = reverse('pybb_pybb:topic_cancel_poll_vote', kwargs={'pk': self.topic.id})
         response = self.client.post(cancel_vote_url, data=values, follow=True)
         self.assertEqual(response.status_code, 200)
         self.assertListEqual([a.votes() for a in PollAnswer.objects.all()], [0, 0])
@@ -1413,7 +1417,7 @@ class FiltersTest(TestCase, SharedTestModule):
         self.create_initial(post=False)
 
     def test_filters(self):
-        add_post_url = reverse('pybb:add_post', kwargs={'topic_id': self.topic.id})
+        add_post_url = reverse('pybb_pybb:add_post', kwargs={'topic_id': self.topic.id})
         self.login_client()
         response = self.client.get(add_post_url)
         values = self.get_form_values(response)
@@ -1424,9 +1428,9 @@ class FiltersTest(TestCase, SharedTestModule):
 
 
 class CustomPermissionHandler(permissions.DefaultPermissionHandler):
-    """ 
+    """
     a custom permission handler which changes the meaning of "hidden" forum:
-    "hidden" forum or category is visible for all logged on users, not only staff 
+    "hidden" forum or category is visible for all logged on users, not only staff
     """
 
     def filter_categories(self, user, qs):
@@ -1486,9 +1490,10 @@ class CustomPermissionHandlerTest(TestCase, SharedTestModule):
     def setUp(self):
         self.create_user()
         # create public and hidden categories, forums, posts
-        c_pub = Category(name='public')
+        client_for = ClientModel.objects.create(name='Pybb', code='pybb')
+        c_pub = Category(name='public', client=client_for)
         c_pub.save()
-        c_hid = Category(name='private', hidden=True)
+        c_hid = Category(name='private', hidden=True, client=client_for)
         c_hid.save()
         self.forum = Forum.objects.create(name='pub1', category=c_pub)
         Forum.objects.create(name='priv1', category=c_hid)
@@ -1541,7 +1546,7 @@ class CustomPermissionHandlerTest(TestCase, SharedTestModule):
             self.assertEqual(r.status_code, 301)
 
     def test_poll_add(self):
-        add_topic_url = reverse('pybb:add_topic', kwargs={'forum_id': self.forum.id})
+        add_topic_url = reverse('pybb_pybb:add_topic', kwargs={'forum_id': self.forum.id})
         self.login_client()
         response = self.client.get(add_topic_url)
         values = self.get_form_values(response)
@@ -1582,8 +1587,10 @@ class LogonRedirectTest(TestCase, SharedTestModule):
         nostaff.is_staff = False
         nostaff.save()
 
-        # create topic, post in hidden category 
-        self.category = Category(name='private', hidden=True)
+        # create topic, post in hidden category
+        self.client_for = ClientModel.objects.create(name='Pybb', code='pybb')
+        self.category = Category(
+            name='private', hidden=True, client=self.client_for)
         self.category.save()
         self.forum = Forum(name='priv1', category=self.category)
         self.forum.save()
@@ -1641,7 +1648,7 @@ class LogonRedirectTest(TestCase, SharedTestModule):
         _attach_perms_class('pybb.tests.RestrictEditingHandler')
 
         # access without user should be redirected
-        add_topic_url = reverse('pybb:add_topic', kwargs={'forum_id': self.forum.id})
+        add_topic_url = reverse('pybb_pybb:add_topic', kwargs={'forum_id': self.forum.id})
         r = self.get_with_user(add_topic_url)
         self.assertRedirects(r, settings.LOGIN_URL + '?next=%s' % add_topic_url)
 
@@ -1659,7 +1666,7 @@ class LogonRedirectTest(TestCase, SharedTestModule):
         _attach_perms_class('pybb.tests.RestrictEditingHandler')
 
         # access without user should be redirected
-        edit_post_url = reverse('pybb:edit_post', kwargs={'pk': self.post.id})
+        edit_post_url = reverse('pybb_pybb:edit_post', kwargs={'pk': self.post.id})
         r = self.get_with_user(edit_post_url)
         self.assertRedirects(r, settings.LOGIN_URL + '?next=%s' % edit_post_url)
 

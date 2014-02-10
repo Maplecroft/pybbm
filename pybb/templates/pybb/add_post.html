@@ -7,18 +7,18 @@
 
 {% block extra_script %}
     {{ block.super }}
-    {% include "pybb/_markitup.html" %}
+    {% cinclude "pybb/_markitup.html" %}
     <script type="text/javascript" src="{{ STATIC_URL }}pybb/js/jquery.formset.min.js"></script>
 {% endblock %}
 
 {% block breadcrumb %}
     {% if forum %}
         {% with object=forum extra_crumb="New topic" %}
-            {% include 'pybb/breadcrumb.html' %}
+            {% cinclude 'pybb/breadcrumb.html' %}
         {% endwith %}
     {% else %}
         {% with object=topic extra_crumb="New reply" %}
-            {% include 'pybb/breadcrumb.html' %}
+            {% cinclude 'pybb/breadcrumb.html' %}
         {% endwith %}
     {% endif %}
 {% endblock %}
@@ -27,5 +27,5 @@
 
 <h1>{% if forum %}{% trans "New topic" %}{% else %}{% trans "New reply" %}{% endif %}</h1>
 
-{% include "pybb/post_form.html" %}
+{% cinclude "pybb/post_form.html" %}
 {% endblock content %}

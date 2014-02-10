@@ -48,6 +48,7 @@ MIDDLEWARE_CLASSES = (
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'pybb.middleware.PybbMiddleware',
+    'pybb.middleware.PybbRouterMiddleware',
 )
 
 ROOT_URLCONF = 'example_bootstrap.urls'
@@ -106,3 +107,13 @@ LOGGING = {
 }
 
 PYBB_ATTACHMENT_ENABLE = False
+
+PYBB_CLIENT_FORUMS = {
+    '/': {
+        'client': 'pybb',
+        'client_templates': os.path.join(PROJECT_ROOT, 'templates'),
+        'base_template': '%s/base.html' % os.path.join(
+            PROJECT_ROOT, 'templates'),
+        'permission_decorators': [],
+    },
+}

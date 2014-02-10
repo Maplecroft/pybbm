@@ -34,7 +34,7 @@ def notify_topic_subscribers(post):
                 old_lang = translation.get_language()
                 lang = util.get_pybb_profile(user).language or settings.LANGUAGE_CODE
                 translation.activate(lang)
-                delete_url = reverse('pybb:delete_subscription', args=[post.topic.id])
+                delete_url = reverse('%s_pybb:delete_subscription' % post.topic.forum.category.client_code, args=[post.topic.id])
                 current_site = Site.objects.get_current()
                 subject = render_to_string('pybb/mail_templates/subscription_email_subject.html',
                                            { 'site': current_site,

@@ -3,5 +3,5 @@
 
 <div class='category'>
     <h1>{{ category.name }} {% if category.hidden %}[{% trans "Hidden" %}]{% endif %}</h1>
-    {% include 'pybb/forum_list.html' with forum_list=category.forums_accessed category=category parent_forum='' %}
+    {% cinclude 'pybb/forum_list.html' with forum_list=category.forums_accessed category=category parent_forum='' %}
 </div>
