@@ -12,7 +12,7 @@
         {% if extra_crumb %}
             <li>{% pybb_link object PYBB_CLIENT %} <span class="divider">/</span></li>
         {% else %}
-            <li>{{ object }}</li>
+            <li>{% if object.username %}{{ object.get_full_name }}{% else %}{{ object }}{% endif %}</li>
         {% endif %}
     {% endif %}
     {% if extra_crumb %}
