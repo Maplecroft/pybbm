@@ -19,7 +19,7 @@
         <td class="post-info">
             {% cinclude "pybb/avatar.html" with user=post.user %}
 
-            <div class="post-author"><a href="{% url PYBB_CLIENT|add:'_pybb:user' post.user.username %}"><span class="post-username">{{ post.user.username }}</span></a></div>
+            <div class="post-author"><a href="{% url PYBB_CLIENT|add:'_pybb:user' post.user.username %}"><span class="post-username">{{ post.user.get_full_name }}</span></a></div>
             {% if post_user_profile.rank %}
                 <div class='rank'>
                     {% trans "Rank" %}: {{ post_user_profile.rank }}
