@@ -10,7 +10,17 @@ from pybb.loaders import ClientTemplateLoader, PermissionDecoratorLoader
 
 class PybbMiddleware(object):
     def process_request(self, request):
-        if request.user.is_authenticated():
+        if not request.user.is_authenticated():
+            return
+
+        if not request.path:
+            return
+
+        for path, config_data in settings.PYBB_CLIENT_FORUMS.items():
+
+            if not request.path.startswith(path):
+                continue
+
             try:
                 # Here we try to load profile, but can get error
                 # if user created during syncdb but profile model
@@ -35,6 +45,8 @@ class PybbMiddleware(object):
                 request.session['django_language'] = profile.language
                 translation.activate(profile.language)
                 request.LANGUAGE_CODE = translation.get_language()
+
+            break
 
 
 class PybbRouterMiddleware(object):
